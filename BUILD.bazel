@@ -5041,16 +5041,6 @@ xnnpack_unit_test(
 )
 
 xnnpack_unit_test(
-    name = "f32_ibilinear_chw_test",
-    srcs = [
-        "test/f32-ibilinear-chw.cc",
-        "test/ibilinear-chw-microkernel-tester.h",
-        "src/xnnpack/AlignedAllocator.h",
-    ] + MICROKERNEL_TEST_HDRS,
-    deps = MICROKERNEL_TEST_DEPS,
-)
-
-xnnpack_unit_test(
     name = "f16_clamp_test",
     srcs = [
         "test/f16-clamp.cc",

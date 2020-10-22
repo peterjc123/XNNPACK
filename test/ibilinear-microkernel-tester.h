@@ -76,7 +76,7 @@ class IBilinearMicrokernelTester {
     return this->iterations_;
   }
 
-  void Test(xnn_f32_ibilinear_ukernel_function ibilinear) const {
+  void TestNHWC(xnn_f32_ibilinear_ukernel_function ibilinear) const {
     std::random_device random_device;
     auto rng = std::mt19937(random_device());
     auto f32rng = std::bind(std::uniform_real_distribution<float>(0.0f, 1.0f), rng);
@@ -124,6 +124,62 @@ class IBilinearMicrokernelTester {
               output_ref[i * channels() + c],
               output[i * output_stride() + c],
               std::abs(output_ref[i * channels() + c]) * 1.0e-4)
+            << "i = " << i << ", channel = " << c;
+        }
+      }
+    }
+  }
+
+  void TestNCHW(xnn_f32_ibilinear_chw_ukernel_function ibilinear) const {
+    std::random_device random_device;
+    auto rng = std::mt19937(random_device());
+    auto f32rng = std::bind(std::uniform_real_distribution<float>(0.0f, 1.0f), rng);
+
+    std::vector<const float*> indirection(pixels() * 4);
+    std::vector<float> input(XNN_EXTRA_BYTES / sizeof(float) + indirection.size() * channels());
+    std::vector<float, AlignedAllocator<float, 64>> packed_weights(pixels() * 2);
+    std::vector<float> output((pixels() - 1) * output_stride() + channels());
+    std::vector<float> output_ref(pixels() * channels());
+
+    for (size_t iteration = 0; iteration < iterations(); iteration++) {
+      std::generate(input.begin(), input.end(), std::ref(f32rng));
+      std::generate(packed_weights.begin(), packed_weights.end(), std::ref(f32rng));
+      std::fill(output.begin(), output.end(), nanf(""));
+
+      auto input_pixels = indirection.size();
+      for (size_t i = 0; i < input_pixels; i++) {
+        indirection[i] = input.data() + i - input_offset();
+      }
+      std::shuffle(indirection.begin(), indirection.end(), rng);
+
+      // Compute reference results.
+      for (size_t i = 0; i < pixels(); i++) {
+        for (size_t c = 0; c < channels(); c++) {
+          const float alpha_h = packed_weights[i * 2 + 0];
+          const float alpha_v = packed_weights[i * 2 + 1];
+          // `c * pixels() + i` because the output is NCHW.
+          output_ref[c * pixels() + i] =
+            // `c * indirection.size()` because the input is NCHW.
+            indirection[i * 4 + 0][c * input_pixels + input_offset()] * (1.0f - alpha_h) * (1.0f - alpha_v) +
+            indirection[i * 4 + 1][c * input_pixels + input_offset()] * alpha_h * (1.0f - alpha_v) +
+            indirection[i * 4 + 2][c * input_pixels + input_offset()] * (1.0f - alpha_h) * alpha_v +
+            indirection[i * 4 + 3][c * input_pixels + input_offset()] * alpha_h * alpha_v;
+        }
+      }
+
+      // Call optimized micro-kernel.
+      ibilinear(
+        input_pixels * sizeof(float), pixels(), channels() * sizeof(float),
+        indirection.data(), input_offset() * sizeof(float),
+        packed_weights.data(), output.data());
+
+      // Verify results.
+      for (size_t c = 0; c < channels(); c++) {
+        for (size_t i = 0; i < pixels(); i++) {
+          ASSERT_NEAR(
+              output_ref[c * pixels() + i],
+              output[c * pixels() + i],
+              std::abs(output_ref[c * pixels() + i]) * 1.0e-4)
             << "i = " << i << ", channel = " << c;
         }
       }

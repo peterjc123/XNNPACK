@@ -1102,6 +1102,7 @@ typedef void (*xnn_f32_ibilinear_ukernel_function)(
     size_t output_increment);
 
 typedef void (*xnn_f32_ibilinear_chw_ukernel_function)(
+    size_t input_offset_increment,
     size_t output_pixels,
     size_t channels,
     const float** input,
@@ -1117,6 +1118,15 @@ typedef void (*xnn_ibilinear_ukernel_function)(
     const void* weights,
     void* output,
     size_t output_increment);
+
+typedef void (*xnn_ibilinear_chw_ukernel_function)(
+    size_t input_offset_increment,
+    size_t output_pixels,
+    size_t channels,
+    const void** input,
+    size_t input_offset,
+    const void* weights,
+    void* output);
 
 typedef void (*xnn_gavgpool_unipass_ukernel_function)(
     size_t rows,

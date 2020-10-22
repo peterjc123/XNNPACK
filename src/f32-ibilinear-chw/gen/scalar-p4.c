@@ -13,6 +13,7 @@
 
 
 void xnn_f32_ibilinear_chw_ukernel__scalar_p4(
+    size_t input_offset_increment,
     size_t output_pixels,
     size_t channels,
     const float**restrict input,
@@ -20,11 +21,11 @@ void xnn_f32_ibilinear_chw_ukernel__scalar_p4(
     const float*restrict weights,
     float*restrict output)
 {
+  assert(input_offset_increment % sizeof(float) == 0);
   assert(output_pixels != 0);
   assert(channels != 0);
   assert(channels % sizeof(float) == 0);
 
-  const size_t input_offset_increment = output_pixels * 4 * sizeof(float);
   size_t c = channels;
   do {
     const float** i = input;

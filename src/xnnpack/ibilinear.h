@@ -28,6 +28,7 @@ extern "C" {
 
 #define DECLARE_F32_IBILINEAR_CHW_UKERNEL_FUNCTION(fn_name) \
 XNN_INTERNAL void fn_name(                            \
+    size_t input_offset_increment,                    \
     size_t output_pixels,                             \
     size_t channels,                                  \
     const float** input,                              \
